@@ -43,6 +43,7 @@ def itemcheck(pointer):
 class ShotwellSearch:
 	def __init__(self, DBpath):
 		self.DBpath = DBpath
+		self.Moperator = None
 		print ("Class ShotwellSearch initialized")
 		# Copying DBfile
 		if itemcheck (DBpath) != 'file':
@@ -131,6 +132,17 @@ class ShotwellSearch:
 
 		self.con.commit()
 
+	def mainoperator (self, moperator):
+		ops = {
+			'ANY'	:'OR',
+			'ALL'	:'AND',
+			'NONE'	:'AND NOT'}
+		moperator = moperator.upper()
+		if moperator not in ops:
+			raise OutOfRangeError ('This main operator is not allowed (%s)'%Moperator)
+			return
+		self.Moperator = ops(Moperator)
+		print (self.Moperator)
 
 	def filtertext(self, Field, Searchtype, Text):
 		# self.querymode = self.con.execute ("SELECT operator FROM SavedSearchDBTable WHERE id= %s"%Nsearch).fetchone()[0]
@@ -146,7 +158,38 @@ class ShotwellSearch:
 		self.con.commit()
 
 
-	# para resultados únicos, emplear: "SELECT DISTINCT id FROM results"
+
+
+	
+
+"""
+"SELECT id, fullfilepath FROM results WHERE %(condition)"%s(condition)
+
+
+
+
+Notes about TEXT entries:
+
+CONTAINS:
+	like '%value%'
+IS EXACTLY
+	= 'value'
+STARTS WITH:
+	LIKE 'value%'
+ENDS WITH:
+	LIKE '%value'
+DOES NOT CONTAINS:
+	NOT LIKE '%value%'
+IS NOT SET:
+	= null
+IS SET:
+	is not null
+
+
+
+
+
+"""
 
 if __name__ == '__main__':
 	search = ShotwellSearch(DBpath)
