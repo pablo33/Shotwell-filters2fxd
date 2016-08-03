@@ -42,18 +42,17 @@ def itemcheck(pointer):
 
 class ShotwellSearch:
 	def __init__(self, DBpath):
-		self.DBpath = DBpath
-		self.Moperator = None
+		ShotwellSearch.Moperator = None
 		print ("Class ShotwellSearch initialized")
 		# Copying DBfile
 		if itemcheck (DBpath) != 'file':
 			print ('Can\'t locate Shotwell Database.', DBpath)
 			exit()
-		self.tmpDB = 'TempDB.sqlite3'
-		if itemcheck (self.tmpDB) == 'file':
-			os.remove(self.tmpDB)
-		shutil.copy (self.DBpath, self.tmpDB)
-		self.con = sqlite3.connect (self.tmpDB)
+		tmpDB = 'TempDB.sqlite3'
+		if itemcheck (tmpDB) == 'file':
+			os.remove(tmpDB)
+		shutil.copy (DBpath, tmpDB)
+		self.con = sqlite3.connect (tmpDB)
 		
 		# id, filename, photo-Comment, date, flagstate, photostate, rating, title      eventname, event_comment,     tag, 
 
@@ -132,17 +131,17 @@ class ShotwellSearch:
 
 		self.con.commit()
 
-	def mainoperator (self, moperator):
+	def mainoperator (moperator):
 		ops = {
 			'ANY'	:'OR',
 			'ALL'	:'AND',
 			'NONE'	:'AND NOT'}
 		moperator = moperator.upper()
 		if moperator not in ops:
-			raise OutOfRangeError ('This main operator is not allowed (%s)'%Moperator)
+			raise OutOfRangeError ('This main operator is not allowed (%s)'%moperator)
 			return
-		self.Moperator = ops(Moperator)
-		print (self.Moperator)
+		ShotwellSearch.Moperator = ops[moperator]
+		print (ShotwellSearch.Moperator)
 
 	def filtertext(self, Field, Searchtype, Text):
 		# self.querymode = self.con.execute ("SELECT operator FROM SavedSearchDBTable WHERE id= %s"%Nsearch).fetchone()[0]

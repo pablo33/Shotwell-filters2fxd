@@ -27,8 +27,22 @@ class itemcheck_text_values (unittest.TestCase):
 		for inputstring in malformed_values:
 			self.assertRaises (TM.MalformedPathError, TM.itemcheck, inputstring)
 
+class ShotwellSearch_test (unittest.TestCase):
+	
+	classitem = TM.ShotwellSearch
 
+	def test_mainoperator (self):
+		""" Set main SQL operator in Class"""
+		known_values = (
+			('ALL','AND'),
+			('any','OR'),
+			('nOnE','AND NOT')
+			)
 
+		for key, match in known_values:
+			self.classitem.mainoperator(key)
+			result = self.classitem.Moperator
+			self.assertEqual(match, result)
 
 
 if __name__ == '__main__':
