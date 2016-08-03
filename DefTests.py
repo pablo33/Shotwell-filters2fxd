@@ -28,8 +28,9 @@ class itemcheck_text_values (unittest.TestCase):
 			self.assertRaises (TM.MalformedPathError, TM.itemcheck, inputstring)
 
 class ShotwellSearch_test (unittest.TestCase):
-	
-	classitem = TM.ShotwellSearch
+	DBpath = "TESTS/photo.db"
+	DBpath = "/home/pablo/.local/share/shotwell/data/photo.db"
+	classitem = TM.ShotwellSearch (DBpath)
 
 	def test_mainoperator (self):
 		""" Set main SQL operator in Class"""
@@ -43,6 +44,16 @@ class ShotwellSearch_test (unittest.TestCase):
 			self.classitem.mainoperator(key)
 			result = self.classitem.Moperator
 			self.assertEqual(match, result)
+
+	def test_addfilter (self):
+		""" Set main SQL operator in Class"""
+		known_values = (
+			(('FILE NAME','CONTAINS','valuestring')		,u"filename like '%value%'"),
+			)
+
+		for key, match in known_values:
+			self.classitem.addfilter(key[0],key[1],key[2])
+			self.assertIn (match, self.classitem.whereList)
 
 
 if __name__ == '__main__':

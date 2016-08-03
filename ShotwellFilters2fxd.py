@@ -41,6 +41,38 @@ def itemcheck(pointer):
 
 
 class ShotwellSearch:
+	ops = {
+		'ANY'	:'OR',
+		'ALL'	:'AND',
+		'NONE'	:'AND NOT'
+		}
+
+	fields = {
+		'ANY TEXT': 	('photo-Comment','event_comment','eventname','title','filename'),
+		'COMMENT': 		('photo-Comment','event_comment'),
+		'DATE': 		('date',),
+		'EVENT NAME': 	('eventname',),
+		'FILE NAME':	('filename',),
+		'FLAG STATE':	('flagstate',),
+		'MEDIA TYPE':	('',),
+		'PHOTO STATE':	('photostate',),
+		'RATING':		('rating',),
+		'TAG':			('tag',),
+		'TITLE':		('title',),
+		}
+
+	operators = {
+		'CONTAINS': u"like '%value%'",
+		'IS EXACTLY': u"= 'value'",
+		'STARTS WITH': u"LIKE 'value%'",
+		'ENDS WITH': u"LIKE '%value'",
+		'DOES NOT CONTAINS' : u"NOT LIKE '%value%'",
+		'IS NOT SET' : u"= null",
+		'IS SET' : u"is not null"
+		}
+
+	whereList = list()
+
 	def __init__(self, DBpath):
 		ShotwellSearch.Moperator = None
 		print ("Class ShotwellSearch initialized")
@@ -131,69 +163,37 @@ class ShotwellSearch:
 
 		self.con.commit()
 
-	def mainoperator (moperator):
-		ops = {
-			'ANY'	:'OR',
-			'ALL'	:'AND',
-			'NONE'	:'AND NOT'}
+	def mainoperator (self, moperator):
+		
 		moperator = moperator.upper()
-		if moperator not in ops:
+		if moperator not in self.ops:
 			raise OutOfRangeError ('This main operator is not allowed (%s)'%moperator)
 			return
-		ShotwellSearch.Moperator = ops[moperator]
-		print (ShotwellSearch.Moperator)
+		ShotwellSearch.Moperator = self.ops[moperator]
 
-	def filtertext(self, Field, Searchtype, Text):
-		# self.querymode = self.con.execute ("SELECT operator FROM SavedSearchDBTable WHERE id= %s"%Nsearch).fetchone()[0]
-		if Field not in ('filename','comment'):
-			print ('field not allowed')
-			return
-		if Searchtype == 'CONTAINS':
-			Operator, Text = 'LIKE', u"'%"+Text+u"%'"
-
-			print (Operator)
-		if self.querymode == 'ANY':
-			self.con.execute ("INSERT INTO results (id) SELECT id FROM phototable WHERE %(field)s %(operator)s %(value)s"%({'field':Field, 'operator':Operator, 'value':Text}))
-		self.con.commit()
-
-
-
+	def addfilter (self, field, operator, value):
+		if field not in self.fields:
+			raise OutOfRangeError ('Not a valid field %s not in %s'%(field, fields))
+		if operator not in self.operators:
+			raise OutOfRangeError ('Not a valid operator %s not in %s'%(operator, operators))
+		# if self.whereList
+		for wherefield in self.fields[field]:
+			string = " ".join([wherefield, self.operators[operator]])
+			self.whereList.append (string)
+			print (string)
+		return string
 
 	
 
 """
 "SELECT id, fullfilepath FROM results WHERE %(condition)"%s(condition)
 
-
-
-
-Notes about TEXT entries:
-
-CONTAINS:
-	like '%value%'
-IS EXACTLY
-	= 'value'
-STARTS WITH:
-	LIKE 'value%'
-ENDS WITH:
-	LIKE '%value'
-DOES NOT CONTAINS:
-	NOT LIKE '%value%'
-IS NOT SET:
-	= null
-IS SET:
-	is not null
-
-
-
-
-
 """
 
 if __name__ == '__main__':
 	search = ShotwellSearch(DBpath)
-	#search.filtertext ('comment','CONTAINS','Super')
-	#search.filtertext ('filename','CONTAINS','Last')
+	#search.addfilter ('comment','CONTAINS','Super')
+	#search.addfilter ('filename','CONTAINS','Last')
 
 
 
