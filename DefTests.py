@@ -45,14 +45,19 @@ class ShotwellSearch_test (unittest.TestCase):
 			result = self.classitem.Moperator
 			self.assertEqual(match, result)
 
-	def test_addfilter (self):
+	def test_addtextfilter (self):
 		""" Set main SQL operator in Class"""
 		known_values = (
-			(('FILE NAME','CONTAINS','valuestring')		,u"filename like '%value%'"),
+			(('FILE_NAME','CONTAINS','valuestring')		,u"filename LIKE '%value%'"),
+			(('DATE','STARTS_WITH','valuestring')		,u"date LIKE 'value%'"),
+			(('EVENT_NAME','ENDS_WITH','valuestring')		,u"eventname LIKE '%value'"),
+			(('TAG','DOES_NOT_CONTAINS','valuestring')		,u"tag NOT LIKE '%value%'"),
+			(('TITLE','IS_NOT_SET','valuestring')		,u"title IS NULL"),
+			(('TITLE','IS_SET','valuestring')		,u"title IS NOT NULL"),
 			)
 
 		for key, match in known_values:
-			self.classitem.addfilter(key[0],key[1],key[2])
+			self.classitem.addtextfilter(key[0],key[1],key[2])
 			self.assertIn (match, self.classitem.whereList)
 
 

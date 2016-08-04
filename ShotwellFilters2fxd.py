@@ -51,8 +51,8 @@ class ShotwellSearch:
 		'ANY TEXT': 	('photo-Comment','event_comment','eventname','title','filename'),
 		'COMMENT': 		('photo-Comment','event_comment'),
 		'DATE': 		('date',),
-		'EVENT NAME': 	('eventname',),
-		'FILE NAME':	('filename',),
+		'EVENT_NAME': 	('eventname',),
+		'FILE_NAME':	('filename',),
 		'FLAG STATE':	('flagstate',),
 		'MEDIA TYPE':	('',),
 		'PHOTO STATE':	('photostate',),
@@ -61,14 +61,14 @@ class ShotwellSearch:
 		'TITLE':		('title',),
 		}
 
-	operators = {
-		'CONTAINS': u"like '%value%'",
-		'IS EXACTLY': u"= 'value'",
-		'STARTS WITH': u"LIKE 'value%'",
-		'ENDS WITH': u"LIKE '%value'",
-		'DOES NOT CONTAINS' : u"NOT LIKE '%value%'",
-		'IS NOT SET' : u"= null",
-		'IS SET' : u"is not null"
+	textoperators = {
+		'CONTAINS': u"LIKE '%value%'",
+		'IS_EXACTLY': u"= 'value'",
+		'STARTS_WITH': u"LIKE 'value%'",
+		'ENDS_WITH': u"LIKE '%value'",
+		'DOES_NOT_CONTAINS' : u"NOT LIKE '%value%'",
+		'IS_SET' : u"IS NOT NULL",
+		'IS_NOT_SET' : u"IS NULL",
 		}
 
 	whereList = list()
@@ -164,21 +164,20 @@ class ShotwellSearch:
 		self.con.commit()
 
 	def mainoperator (self, moperator):
-		
 		moperator = moperator.upper()
 		if moperator not in self.ops:
 			raise OutOfRangeError ('This main operator is not allowed (%s)'%moperator)
 			return
 		ShotwellSearch.Moperator = self.ops[moperator]
 
-	def addfilter (self, field, operator, value):
+	def addtextfilter (self, field, operator, value):
 		if field not in self.fields:
 			raise OutOfRangeError ('Not a valid field %s not in %s'%(field, fields))
-		if operator not in self.operators:
-			raise OutOfRangeError ('Not a valid operator %s not in %s'%(operator, operators))
+		if operator not in self.textoperators:
+			raise OutOfRangeError ('Not a valid operator %s not in %s'%(operator, self.textoperators))
 		# if self.whereList
 		for wherefield in self.fields[field]:
-			string = " ".join([wherefield, self.operators[operator]])
+			string = " ".join([wherefield, self.textoperators[operator]])
 			self.whereList.append (string)
 			print (string)
 		return string
@@ -186,7 +185,13 @@ class ShotwellSearch:
 	
 
 """
-"SELECT id, fullfilepath FROM results WHERE %(condition)"%s(condition)
+Date operators: 
+	'IS EXACTLY' : u"= value",
+	'IS AFTER' : u"> value",
+	'IS BEFORE' : u"< value",
+	'IS BETWEEN' : u"> value and date < value2",
+
+SELECT id, fullfilepath FROM results WHERE %(condition)"%s(condition)
 
 """
 
