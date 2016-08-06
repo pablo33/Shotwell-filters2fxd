@@ -48,17 +48,29 @@ class ShotwellSearch_test (unittest.TestCase):
 	def test_addtextfilter (self):
 		""" Set main SQL operator in Class"""
 		known_values = (
-			(('FILE_NAME','CONTAINS','valuestring')		,u"filename LIKE '%value%'"),
-			(('DATE','STARTS_WITH','valuestring')		,u"date LIKE 'value%'"),
-			(('EVENT_NAME','ENDS_WITH','valuestring')		,u"eventname LIKE '%value'"),
-			(('TAG','DOES_NOT_CONTAINS','valuestring')		,u"tag NOT LIKE '%value%'"),
-			(('TITLE','IS_NOT_SET','valuestring')		,u"title IS NULL"),
-			(('TITLE','IS_SET','valuestring')		,u"title IS NOT NULL"),
+			(('FILE_NAME','CONTAINS','valuestring')			,u"filename LIKE '%valuestring%'"),
+			(('COMMENT','STARTS_WITH','otherstring')		,u"comment LIKE 'otherstring%'"),
+			(('EVENT_NAME','ENDS_WITH','endingstring')		,u"eventname LIKE '%endingstring'"),
+			(('TAG','DOES_NOT_CONTAINS','containing string'),u"tag NOT LIKE '%containing string%'"),
+			(('TITLE','IS_NOT_SET',None)					,u"title IS NULL"),
+			(('TITLE','IS_SET',None)						,u"title IS NOT NULL"),
+			(('ANY TEXT','CONTAINS','containing text')		,u"title LIKE '%containing text%'"),
+			(('ANY TEXT','CONTAINS','containing text')		,u"eventname LIKE '%containing text%'"),
+			(('ANY TEXT','CONTAINS','containing text')		,u"title LIKE '%containing text%'"),
+			(('ANY TEXT','CONTAINS','containing text')		,u"filename LIKE '%containing text%'"),
+			(('ANY TEXT','CONTAINS','containing text')		,u"event_comment LIKE '%containing text%'"),
+			(('COMMENT','IS_SET', None)						,u"event_comment IS NOT NULL"),
+			(('COMMENT','IS_SET',None)						,u"comment IS NOT NULL"),
 			)
 
 		for key, match in known_values:
 			self.classitem.addtextfilter(key[0],key[1],key[2])
 			self.assertIn (match, self.classitem.whereList)
+
+	def test_showquery (self):
+		""" Retrieve sql query """
+		print (self.classitem.showquery())
+
 
 
 if __name__ == '__main__':

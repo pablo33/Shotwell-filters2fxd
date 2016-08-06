@@ -48,8 +48,8 @@ class ShotwellSearch:
 		}
 
 	fields = {
-		'ANY TEXT': 	('photo-Comment','event_comment','eventname','title','filename'),
-		'COMMENT': 		('photo-Comment','event_comment'),
+		'ANY TEXT': 	('comment','event_comment','eventname','title','filename'),
+		'COMMENT': 		('comment','event_comment'),
 		'DATE': 		('date',),
 		'EVENT_NAME': 	('eventname',),
 		'FILE_NAME':	('filename',),
@@ -71,25 +71,18 @@ class ShotwellSearch:
 		'IS_NOT_SET' : u"IS NULL",
 		}
 
-	whereList = list()
+	print ("Class ShotwellSearch initialized")
+	# Copying DBfile
+	if itemcheck (DBpath) != 'file':
+		print ('Can\'t locate Shotwell Database.', DBpath)
+		exit()
+	tmpDB = 'TempDB.sqlite3'
+	if itemcheck (tmpDB) == 'file':
+		os.remove(tmpDB)
+	shutil.copy (DBpath, tmpDB)
+	con = sqlite3.connect (tmpDB)
 
-	def __init__(self, DBpath):
-		ShotwellSearch.Moperator = None
-		print ("Class ShotwellSearch initialized")
-		# Copying DBfile
-		if itemcheck (DBpath) != 'file':
-			print ('Can\'t locate Shotwell Database.', DBpath)
-			exit()
-		tmpDB = 'TempDB.sqlite3'
-		if itemcheck (tmpDB) == 'file':
-			os.remove(tmpDB)
-		shutil.copy (DBpath, tmpDB)
-		self.con = sqlite3.connect (tmpDB)
-		
-		# id, filename, photo-Comment, date, flagstate, photostate, rating, title      eventname, event_comment,     tag, 
-
-
-		self.con.execute ("CREATE TABLE results (\
+	con.execute ("CREATE TABLE results (\
 			id INTEGER PRIMARY KEY, \
 			fullfilepath TEXT UNIQUE NOT NULL, \
 			exposure_time INTEGER, \
@@ -105,8 +98,8 @@ class ShotwellSearch:
 			tags TEXT \
 			)")
 		
-		# Insert photo and event data into results table.
-		self.con.execute ("INSERT INTO results \
+	# Insert photo and event data into results table.
+	con.execute ("INSERT INTO results \
 			SELECT \
 				phototable.id as id,\
 				filename as fullfilepath,\
@@ -124,8 +117,8 @@ class ShotwellSearch:
 			FROM phototable JOIN eventtable \
 			ON phototable.event_id = eventtable.id")
 
-		# adding "No event files" to pictures with event id = -1 and timestamp = 0
-		self.con.execute ("INSERT INTO results\
+	# adding "No event files" to pictures with event id = -1 and timestamp = 0
+	con.execute ("INSERT INTO results\
 			SELECT \
 				id,\
 				filename as fullfilepath,\
@@ -142,33 +135,37 @@ class ShotwellSearch:
 				null as tags\
 			FROM phototable\
 			WHERE event_id = -1 and exposure_time = 0")
-		self.con.commit ()
+	con.commit ()
 		
-		# Extracting and setting filenames
-		cursor = self.con.cursor()
-		cursor.execute ("SELECT id, fullfilepath FROM results ORDER BY id")
+	# Extracting and setting filenames
+	cursor = con.cursor()
+	cursor.execute ("SELECT id, fullfilepath FROM results ORDER BY id")
 
-		for ID, Fullfilepath in cursor:
-			print (ID, Fullfilepath)
-			Filename = os.path.splitext(os.path.basename(Fullfilepath))[0]
-			# Finding tags  (thumb000000000000000f,)
-			thumb = u"'%"+"thumb%016x,"%ID+u"%'"
-			tagstring = ''
-			for entry in self.con.execute ("SELECT name FROM tagtable WHERE photo_id_list LIKE %s"%thumb):
-				tagstring+= ' '+entry[0][1:].split ("/").pop()  # fetchs the last tag
-			print (tagstring)
-			if tagstring == '':
-				tagstring = None
-			self.con.execute("UPDATE results SET filename = ?, tags = ? WHERE id = ?", (Filename,tagstring,ID))
+	for ID, Fullfilepath in cursor:
+		print (ID, Fullfilepath)
+		Filename = os.path.splitext(os.path.basename(Fullfilepath))[0]
+		# Finding tags  (thumb000000000000000f,)
+		thumb = u"'%"+"thumb%016x,"%ID+u"%'"
+		tagstring = ''
+		for entry in con.execute ("SELECT name FROM tagtable WHERE photo_id_list LIKE %s"%thumb):
+			tagstring+= ' '+entry[0][1:].split ("/").pop()  # fetchs the last tag
+		print (tagstring)
+		if tagstring == '':
+			tagstring = None
+		con.execute("UPDATE results SET filename = ?, tags = ? WHERE id = ?", (Filename,tagstring,ID))
 
-		self.con.commit()
+	con.commit()
+
+	def __init__(self, DBpath):
+		self.Moperator = None
+		self.whereList = list()
 
 	def mainoperator (self, moperator):
 		moperator = moperator.upper()
 		if moperator not in self.ops:
 			raise OutOfRangeError ('This main operator is not allowed (%s)'%moperator)
 			return
-		ShotwellSearch.Moperator = self.ops[moperator]
+		self.Moperator = self.ops[moperator]
 
 	def addtextfilter (self, field, operator, value):
 		if field not in self.fields:
@@ -178,10 +175,23 @@ class ShotwellSearch:
 		# if self.whereList
 		for wherefield in self.fields[field]:
 			string = " ".join([wherefield, self.textoperators[operator]])
+			if value != None:
+				string = string.replace('value',value)
 			self.whereList.append (string)
 			print (string)
 		return string
 
+	def showquery (self):
+		if len (self.whereList) == 0:
+			print ("no filters where entered.")
+			return
+		if self.Moperator == None:
+			print ("no main operator was entered")
+			return
+		condition = str(" "+self.Moperator+" ").join(self.whereList)	
+
+		query = "SELECT id, fullfilepath FROM results WHERE %s"%condition
+		return query
 	
 
 """
