@@ -188,11 +188,16 @@ class ShotwellSearch:
 		if operator not in self.textoperators:
 			raise OutOfRangeError ('Not a valid operator %s not in %s'%(operator, self.textoperators))
 		###  TODO ###  Insert "OR" operand to multiple text field searches ("ANY TEXT") ("COMMENT") and insert
+		subwhereList = []
 		for wherefield in self.fields[field]:
 			string = " ".join([wherefield, self.textoperators[operator]])
-			if value != None:
-				string = string.replace('value',value)
-			self.whereList.append (string)
+			subwhereList.append (string)
+		if len (self.fields[field]) > 1:
+			string = "(" + " OR ".join(subwhereList) + ")"
+
+		if value != None:
+			string = string.replace('value',value)
+		self.whereList.append (string)
 
 	def __query__ (self):
 		if len (self.whereList) == 0:
