@@ -31,45 +31,42 @@ class ShotwellSearch_test (unittest.TestCase):
 	DBpath = "TESTS/photo.db"
 	DBpath = "/home/pablo/.local/share/shotwell/data/photo.db"
 	classitem = TM.ShotwellSearch (DBpath)
+	classitem.whereList = []  # Needed to initialize some search for this test
 
-	def test_mainoperator (self):
-		""" Set main SQL operator in Class"""
-		known_values = (
-			('ALL','AND'),
-			('any','OR'),
-			('nOnE','AND NOT')
-			)
-
-		for key, match in known_values:
-			self.classitem.mainoperator(key)
-			result = self.classitem.Moperator
-			self.assertEqual(match, result)
-
-	def test_addtextfilter (self):
-		""" Set main SQL operator in Class"""
+	def test___addtextfilter__ (self):
+		""" Adding Search filters to the query"""
 		known_values = (
 			(('FILE_NAME','CONTAINS','valuestring')			,u"filename LIKE '%valuestring%'"),
-			(('COMMENT','STARTS_WITH','otherstring')		,u"comment LIKE 'otherstring%'"),
-			(('EVENT_NAME','ENDS_WITH','endingstring')		,u"eventname LIKE '%endingstring'"),
-			(('TAG','DOES_NOT_CONTAINS','containing string'),u"tag NOT LIKE '%containing string%'"),
+			(('COMMENT','STARTS_WITH','otherstring')		,u"(comment LIKE 'otherstring%' OR event_comment LIKE 'otherstring%')"),
+			(('EVENT_NAME','ENDS_WITH','endingstring')		,u"event_name LIKE '%endingstring'"),
+			(('TAG','DOES_NOT_CONTAIN','containing string'),u"tags NOT LIKE '%containing string%'"),
 			(('TITLE','IS_NOT_SET',None)					,u"title IS NULL"),
 			(('TITLE','IS_SET',None)						,u"title IS NOT NULL"),
-			(('ANY TEXT','CONTAINS','containing text')		,u"title LIKE '%containing text%'"),
-			(('ANY TEXT','CONTAINS','containing text')		,u"eventname LIKE '%containing text%'"),
-			(('ANY TEXT','CONTAINS','containing text')		,u"title LIKE '%containing text%'"),
-			(('ANY TEXT','CONTAINS','containing text')		,u"filename LIKE '%containing text%'"),
-			(('ANY TEXT','CONTAINS','containing text')		,u"event_comment LIKE '%containing text%'"),
-			(('COMMENT','IS_SET', None)						,u"event_comment IS NOT NULL"),
-			(('COMMENT','IS_SET',None)						,u"comment IS NOT NULL"),
+			(('ANY TEXT','CONTAINS','containing text')		,u"(comment LIKE '%containing text%' OR event_comment LIKE '%containing text%' OR eventname LIKE '%containing text%' OR title LIKE '%containing text%' OR filename LIKE '%containing text%')"),
+			(('COMMENT','IS_SET', None)						,u"(comment IS NOT NULL OR event_comment IS NOT NULL)"),
+			(('COMMENT','IS_NOT_SET',None)					,u"(comment IS NULL OR event_comment IS NULL)"),
+			(('FILE_NAME','IS_EXACTLY','filenametext')		,u"filename = 'filenametext'"),
+			(('TAG','IS_EXACTLY','tagtext')					,u"tags LIKE '% tagtext%'"),
 			)
-
 		for key, match in known_values:
-			self.classitem.addtextfilter(key[0],key[1],key[2])
+			self.classitem.__addtextfilter__(key[0],key[1],key[2])
 			self.assertIn (match, self.classitem.whereList)
+			self.classitem.whereList = []
 
-	def test_showquery (self):
-		""" Retrieve sql query """
-		print (self.classitem.showquery())
+	def test___adddatefilter__ (self):
+		""" Adding Search filters to the query"""
+		known_values = (
+			(('DATE','EXACT',1471212000, 1470607200)					,u"exposure_time = 1471212000"),
+			(('DATE','AFTER',1470780000, 1470607200)					,u"exposure_time >= 1470780000"),
+			(('DATE','BEFORE',1472076000, 1470607200)					,u"exposure_time <= 1472076000"),
+			(('DATE','BETWEEN',1470002400, 1472594400)					,u"(exposure_time >= 1470002400 AND exposure_time <= 1472594400)"),
+			(('DATE','IS_NOT_SET',1470607200, 1470607200)				,u"exposure_time = 0"),
+			)
+		for key, match in known_values:
+			self.classitem.__adddatefilter__(key[0],key[1],key[2], key[3])
+			self.assertIn (match, self.classitem.whereList)
+			self.classitem.whereList = []
+
 
 
 

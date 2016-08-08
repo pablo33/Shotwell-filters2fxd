@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import sqlite3, os, shutil  #, sys, , logging, re
+import unicodedata  # To eliminate áéíóú öü ñÑ
 
 
 # ------- Set Variables ---------
@@ -39,9 +40,17 @@ def itemcheck(pointer):
 		return 'link'
 	return ""
 
+def elimina_tildes(s):
+   return ''.join((c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn'))
+
 
 class ShotwellSearch:
-	""" Handles a Shotwell Database """
+	""" Handles a Shotwell Database in order to access to its Saved Searches.
+		It makes a copy of the Shotwell Database to work with.
+		It makes an auxiliar table to perform Shotwell Saved Searches queries.
+		It returns the Saved Searches Query as an iterator.
+		It returns the file entries of a Saved Search as an iterator.
+		"""
 	ops = {
 		'ANY'	:'OR',
 		'ALL'	:'AND',
@@ -51,15 +60,18 @@ class ShotwellSearch:
 	fields = {
 		'ANY TEXT': 	('comment','event_comment','eventname','title','filename'),
 		'COMMENT': 		('comment','event_comment'),
-		'DATE': 		('date',),
 		'EVENT_NAME': 	('event_name',),
 		'FILE_NAME':	('filename',),
-		'FLAG STATE':	('flagstate',),
-		'MEDIA TYPE':	('',),
-		'PHOTO STATE':	('photostate',),
-		'RATING':		('rating',),
 		'TAG':			('tags',),
 		'TITLE':		('title',),
+
+		'DATE': 		'exposure_time',
+
+		'RATING':		'rating',
+
+		'FLAG STATE':	'flagstate',
+		'MEDIA TYPE':	'',
+		'PHOTO STATE':	'photostate',
 		}
 
 	textoperators = {
@@ -71,7 +83,20 @@ class ShotwellSearch:
 		'IS_SET' : u"IS NOT NULL",
 		'IS_NOT_SET' : u"IS NULL",
 		}
+
+	dateoperators = {
+		'EXACT': 'datefield = d_one',
+		'AFTER': 'datefield >= d_one',
+		'BEFORE': 'datefield <= d_one',
+		'BETWEEN': '(datefield >= d_one AND datefield <= d_two)',
+		'IS_NOT_SET': 'datefield = 0',
+		}
+
+	searchid = None
 	Moperator = None
+	Searchname = None
+	query = None
+
 
 	def __init__(self, DBpath):
 		""" Makes its own tmp DB """
@@ -152,9 +177,13 @@ class ShotwellSearch:
 			tagstring = ''
 			for entry in self.con.execute ("SELECT name FROM tagtable WHERE photo_id_list LIKE %s"%thumb):
 				tagstring+= ' '+entry[0][1:].split ("/").pop()  # fetchs the last tag
-			print (tagstring)
 			if tagstring == '':
 				tagstring = None
+			else:
+				# aplying transformations >> lower and without tildes
+				tagstring = tagstring.lower()
+				tagstring = elimina_tildes(tagstring)
+			print (tagstring)
 			self.con.execute("UPDATE results SET filename = ?, tags = ? WHERE id = ?", (Filename,tagstring,ID))
 
 		self.con.commit()
@@ -165,6 +194,10 @@ class ShotwellSearch:
 		return tablelist
 
 	def Search (self, searchid):
+		""" Solve a query for this search ID
+			You can access to the SQL query statement by the query attribute.
+		"""
+		self.searchid = searchid
 		entry = self.con.execute ("SELECT name, operator FROM SavedSearchDBTable WHERE id = %s"%searchid).fetchone()
 		if entry == None:
 			print ("Search id out of Searchtable.")
@@ -179,8 +212,11 @@ class ShotwellSearch:
 		# Text filters:
 		for entry in self.con.execute ("SELECT search_type, context, text FROM SavedSearchDBTable_Text WHERE search_id = %s"%searchid):
 			self.__addtextfilter__ (entry[0],entry[1],entry[2])
+		for entry in self.con.execute ("SELECT search_type, context, date_one, date_two FROM SavedSearchDBTable_Date WHERE search_id = %s"%searchid):
+			self.__adddatefilter__ (entry[0],entry[1],entry[2], entry[3])
 
-		self.__query__()
+
+		self.__constructquery__()
 
 	def __addtextfilter__ (self, field, operator, value):
 		if field not in self.fields:
@@ -189,6 +225,8 @@ class ShotwellSearch:
 			raise OutOfRangeError ('Not a valid operator %s not in %s'%(operator, self.textoperators))
 		subwhereList = []
 		for wherefield in self.fields[field]:
+			if wherefield == 'tags' and operator == 'IS_EXACTLY':
+				operator, value = 'CONTAINS', " "+value
 			string = " ".join([wherefield, self.textoperators[operator]])
 			subwhereList.append (string)
 		if len (self.fields[field]) > 1:
@@ -197,13 +235,27 @@ class ShotwellSearch:
 			string = string.replace('value',value)
 		self.whereList.append (string)
 
-	def __query__ (self):
+	def __adddatefilter__ (self, field, context, dateone, datetwo):
+		if field not in self.fields:
+			raise OutOfRangeError ('Not a valid field %s not in %s'%(field, fields))
+		if context not in self.dateoperators:
+			raise OutOfRangeError ('Not a valid operator %s not in %s'%(context, self.textoperators))
+		string = self.dateoperators[context].replace('datefield',self.fields [field])
+		string = string.replace('d_one', str(dateone))
+		string = string.replace('d_two', str(datetwo))
+
+		self.whereList.append (string)
+
+
+	def __constructquery__ (self):
 		condition = str(" "+self.Moperator+" ").join(self.whereList)	
 		self.query = "SELECT id, fullfilepath FROM results WHERE %s ORDER BY exposure_time"%condition
 
 	def Resultentries (self):
+		""" Result table iterator.
+			"""
 		if self.Moperator == None:
-			print ("no Search was selected.\n","You have to select among this Saved Searches in Shotwell:")
+			print ("no Search was selected.\n","You have to select one search among this Saved Searches in Shotwell:")
 			for entry in self.Searchtable():
 				print ("\t",entry)
 			return
