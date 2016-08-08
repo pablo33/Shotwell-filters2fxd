@@ -71,7 +71,7 @@ class ShotwellSearch:
 		'IS_SET' : u"IS NOT NULL",
 		'IS_NOT_SET' : u"IS NULL",
 		}
-
+	Moperator = None
 
 	def __init__(self, DBpath):
 		""" Makes its own tmp DB """
@@ -187,30 +187,26 @@ class ShotwellSearch:
 			raise OutOfRangeError ('Not a valid field %s not in %s'%(field, fields))
 		if operator not in self.textoperators:
 			raise OutOfRangeError ('Not a valid operator %s not in %s'%(operator, self.textoperators))
-		###  TODO ###  Insert "OR" operand to multiple text field searches ("ANY TEXT") ("COMMENT") and insert
 		subwhereList = []
 		for wherefield in self.fields[field]:
 			string = " ".join([wherefield, self.textoperators[operator]])
 			subwhereList.append (string)
 		if len (self.fields[field]) > 1:
 			string = "(" + " OR ".join(subwhereList) + ")"
-
 		if value != None:
 			string = string.replace('value',value)
 		self.whereList.append (string)
 
 	def __query__ (self):
-		if len (self.whereList) == 0:
-			print ("no filters where entered.")
-			return
-		if self.Moperator == None:
-			print ("no main operator was entered")
-			return
 		condition = str(" "+self.Moperator+" ").join(self.whereList)	
-
 		self.query = "SELECT id, fullfilepath FROM results WHERE %s ORDER BY exposure_time"%condition
 
 	def Resultentries (self):
+		if self.Moperator == None:
+			print ("no Search was selected.\n","You have to select among this Saved Searches in Shotwell:")
+			for entry in self.Searchtable():
+				print ("\t",entry)
+			return
 		return self.con.execute (self.query)
 	
 
