@@ -42,7 +42,7 @@ class ShotwellSearch_test (unittest.TestCase):
 			(('TAG','DOES_NOT_CONTAIN','containing string'),u"tags NOT LIKE '%containing string%'"),
 			(('TITLE','IS_NOT_SET',None)					,u"title IS NULL"),
 			(('TITLE','IS_SET',None)						,u"title IS NOT NULL"),
-			(('ANY TEXT','CONTAINS','containing text')		,u"(comment LIKE '%containing text%' OR event_comment LIKE '%containing text%' OR eventname LIKE '%containing text%' OR title LIKE '%containing text%' OR filename LIKE '%containing text%')"),
+			(('ANY_TEXT','CONTAINS','containing text')		,u"(comment LIKE '%containing text%' OR event_comment LIKE '%containing text%' OR event_name LIKE '%containing text%' OR title LIKE '%containing text%' OR filename LIKE '%containing text%' OR tags LIKE '%containing text%')"),
 			(('COMMENT','IS_SET', None)						,u"(comment IS NOT NULL OR event_comment IS NOT NULL)"),
 			(('COMMENT','IS_NOT_SET',None)					,u"(comment IS NULL OR event_comment IS NULL)"),
 			(('FILE_NAME','IS_EXACTLY','filenametext')		,u"filename = 'filenametext'"),
@@ -67,6 +67,21 @@ class ShotwellSearch_test (unittest.TestCase):
 			self.assertIn (match, self.classitem.whereList)
 			self.classitem.whereList = []
 
+	def test___addratingfilter__ (self):
+		""" Adding Search filters to the query"""
+		known_values = (
+			(('RATING',-1 ,'AND_HIGHER')	,"rating >= -1"),
+			(('RATING', 0 ,'ONLY')			,"rating = 0"),
+			(('RATING', 1 ,'AND_LOWER')		,"rating <= 1"),
+			(('RATING', 2 ,'ONLY')			,"rating = 2"),
+			(('RATING', 3 ,'AND_LOWER')		,"rating <= 3"),
+			(('RATING', 4 ,'AND_HIGHER')	,"rating >= 4"),
+			(('RATING', 5 ,'AND_HIGHER')	,"rating >= 5"),
+			)
+		for key, match in known_values:
+			self.classitem.__addratingfilter__(key[0],key[1],key[2])
+			self.assertIn (match, self.classitem.whereList)
+			self.classitem.whereList = []
 
 
 

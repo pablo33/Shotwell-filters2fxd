@@ -58,15 +58,13 @@ class ShotwellSearch:
 		}
 
 	fields = {
-		'ANY TEXT': 	('comment','event_comment','eventname','title','filename'),
+		'ANY_TEXT': 	('comment','event_comment','event_name','title','filename','tags'),
 		'COMMENT': 		('comment','event_comment'),
 		'EVENT_NAME': 	('event_name',),
 		'FILE_NAME':	('filename',),
 		'TAG':			('tags',),
 		'TITLE':		('title',),
-
 		'DATE': 		'exposure_time',
-
 		'RATING':		'rating',
 
 		'FLAG STATE':	'flagstate',
@@ -91,6 +89,12 @@ class ShotwellSearch:
 		'BETWEEN': '(datefield >= d_one AND datefield <= d_two)',
 		'IS_NOT_SET': 'datefield = 0',
 		}
+
+	ratingoperators = {
+		'AND_LOWER':	'<=',
+		'ONLY': 		'=',
+		'AND_HIGHER': 	'>=',
+	}
 
 	searchid = None
 	Moperator = None
@@ -220,7 +224,7 @@ class ShotwellSearch:
 
 	def __addtextfilter__ (self, field, operator, value):
 		if field not in self.fields:
-			raise OutOfRangeError ('Not a valid field %s not in %s'%(field, fields))
+			raise OutOfRangeError ('Not a valid field %s not in %s'%(field, self.fields))
 		if operator not in self.textoperators:
 			raise OutOfRangeError ('Not a valid operator %s not in %s'%(operator, self.textoperators))
 		subwhereList = []
@@ -236,20 +240,28 @@ class ShotwellSearch:
 		self.whereList.append (string)
 
 	def __adddatefilter__ (self, field, context, dateone, datetwo):
-		if field not in self.fields:
-			raise OutOfRangeError ('Not a valid field %s not in %s'%(field, fields))
+		if field != 'DATE':
+			raise OutOfRangeError ('Not a valid field %s not in %s'%(field, self.fields))
 		if context not in self.dateoperators:
-			raise OutOfRangeError ('Not a valid operator %s not in %s'%(context, self.textoperators))
+			raise OutOfRangeError ('Not a valid operator %s not in %s'%(context, self.dateoperators))
 		string = self.dateoperators[context].replace('datefield',self.fields [field])
 		string = string.replace('d_one', str(dateone))
 		string = string.replace('d_two', str(datetwo))
+		self.whereList.append (string)
 
+	def __addratingfilter__ (self, field, rating, context ):
+		if field != 'RATING':
+			raise OutOfRangeError ('Not a valid field %s not in %s'%(field, self.fields))
+		if context not in self.ratingoperators:
+			raise OutOfRangeError ('Not a valid operator %s not in %s'%(context, self.ratingoperators))
+		string = self.fields [field] + " " + self.ratingoperators[context] + " " + str(rating)
 		self.whereList.append (string)
 
 
 	def __constructquery__ (self):
-		condition = str(" "+self.Moperator+" ").join(self.whereList)	
-		self.query = "SELECT id, fullfilepath FROM results WHERE %s ORDER BY exposure_time"%condition
+		if len (self.whereList) >= 1:
+			condition = str(" "+self.Moperator+" ").join(self.whereList)	
+			self.query = "SELECT id, fullfilepath FROM results WHERE %s ORDER BY exposure_time"%condition
 
 	def Resultentries (self):
 		""" Result table iterator.
