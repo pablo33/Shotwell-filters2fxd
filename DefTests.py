@@ -83,6 +83,17 @@ class ShotwellSearch_test (unittest.TestCase):
 			self.assertIn (match, self.classitem.whereList)
 			self.classitem.whereList = []
 
+	def test__addflagfilter__(self):
+		""" Adding Search filters to the query"""
+		known_values = (
+			(('FLAG_STATE', 'FLAGGED')		,"flags = 16"),
+			(('FLAG_STATE', 'UNFLAGGED')	,"flags = 0"),
+			)
+		for key, match in known_values:
+			self.classitem.__addflagfilter__ (key[0],key[1])
+			self.assertIn (match, self.classitem.whereList)
+			self.classitem.whereList = []
+
 
 
 if __name__ == '__main__':

@@ -51,12 +51,14 @@ class ShotwellSearch:
 		It returns the Saved Searches Query as an iterator.
 		It returns the file entries of a Saved Search as an iterator.
 		"""
+	# Main Search operators
 	ops = {
 		'ANY'	:'OR',
 		'ALL'	:'AND',
 		'NONE'	:'AND NOT'
 		}
 
+	# field Shotwell DB Search conversion to results field,
 	fields = {
 		'ANY_TEXT': 	('comment','event_comment','event_name','title','filename','tags'),
 		'COMMENT': 		('comment','event_comment'),
@@ -66,12 +68,13 @@ class ShotwellSearch:
 		'TITLE':		('title',),
 		'DATE': 		'exposure_time',
 		'RATING':		'rating',
+		'FLAG_STATE':	'flags',
 
-		'FLAG STATE':	'flagstate',
 		'MEDIA TYPE':	'',
 		'PHOTO STATE':	'photostate',
 		}
 
+	# text operators SQL conversion string
 	textoperators = {
 		'CONTAINS': u"LIKE '%value%'",
 		'IS_EXACTLY': u"= 'value'",
@@ -82,6 +85,7 @@ class ShotwellSearch:
 		'IS_NOT_SET' : u"IS NULL",
 		}
 
+	# date operators SQL conversion string
 	dateoperators = {
 		'EXACT': 'datefield = d_one',
 		'AFTER': 'datefield >= d_one',
@@ -90,11 +94,21 @@ class ShotwellSearch:
 		'IS_NOT_SET': 'datefield = 0',
 		}
 
+	# rating operators SQL conversion string
 	ratingoperators = {
 		'AND_LOWER':	'<=',
 		'ONLY': 		'=',
 		'AND_HIGHER': 	'>=',
 	}
+
+	# Flagged operators SQL conversion string
+	flagoperators = {
+		'FLAGGED': 	'= 16',
+		'UNFLAGGED': 	'= 0',
+	}
+
+	
+
 
 	searchid = None
 	Moperator = None
@@ -169,7 +183,7 @@ class ShotwellSearch:
 				WHERE event_id = -1 and exposure_time = 0")
 		self.con.commit ()
 			
-		# Extracting and setting filenames
+		# Extracting and setting tags and filenames
 		cursor = self.con.cursor()
 		cursor.execute ("SELECT id, fullfilepath FROM results ORDER BY id")
 
@@ -184,7 +198,7 @@ class ShotwellSearch:
 			if tagstring == '':
 				tagstring = None
 			else:
-				# aplying transformations >> lower and without tildes
+				# aplying transformations >> lower and without tildes ..... Well, Shotwell modifies this searches on tags, so lets do it.
 				tagstring = tagstring.lower()
 				tagstring = elimina_tildes(tagstring)
 			print (tagstring)
@@ -218,6 +232,10 @@ class ShotwellSearch:
 			self.__addtextfilter__ (entry[0],entry[1],entry[2])
 		for entry in self.con.execute ("SELECT search_type, context, date_one, date_two FROM SavedSearchDBTable_Date WHERE search_id = %s"%searchid):
 			self.__adddatefilter__ (entry[0],entry[1],entry[2], entry[3])
+		for entry in self.con.execute ("SELECT search_type, rating, context FROM SavedSearchDBTable_Rating WHERE search_id = %s"%searchid):
+			self.__addratingfilter__ (entry[0],entry[1],entry[2])
+		for entry in self.con.execute ("SELECT search_type, flag_state FROM SavedSearchDBTable_Flagged WHERE search_id = %s"%searchid):
+			self.__addflagfilter__ (entry[0],entry[1])
 
 
 		self.__constructquery__()
@@ -257,6 +275,15 @@ class ShotwellSearch:
 		string = self.fields [field] + " " + self.ratingoperators[context] + " " + str(rating)
 		self.whereList.append (string)
 
+	def __addflagfilter__ (self, field, context):
+		if field != 'FLAG_STATE':
+			raise OutOfRangeError ('Not a valid field %s not in %s'%(field, self.fields))
+		if context not in self.flagoperators:
+			raise OutOfRangeError ('Not a valid operator %s not in %s'%(context, self.flagoperators))
+		string = self.fields [field] + " " + self.flagoperators[context]
+		self.whereList.append (string)
+
+
 
 	def __constructquery__ (self):
 		if len (self.whereList) >= 1:
@@ -274,21 +301,6 @@ class ShotwellSearch:
 		return self.con.execute (self.query)
 	
 
-"""
-Date operators: 
-	'IS EXACTLY' : u"= value",
-	'IS AFTER' : u"> value",
-	'IS BEFORE' : u"< value",
-	'IS BETWEEN' : u"> value and date < value2",
-
-SELECT id, fullfilepath FROM results WHERE %(condition)"%s(condition)
-
-"""
 
 if __name__ == '__main__':
 	search = ShotwellSearch(DBpath)
-	#search.addfilter ('comment','CONTAINS','Super')
-	#search.addfilter ('filename','CONTAINS','Last')
-
-
-
