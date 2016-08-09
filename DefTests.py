@@ -1,36 +1,37 @@
 #!/usr/bin/python3
 # Test Configuration
 import unittest
-import ShotwellFilters2fxd
+from ShotwellFilters2fxd import ShotwellSearch
 
 
 
 #####TESTS########
 
-TM = ShotwellFilters2fxd
+TM = ShotwellSearch
 
 class itemcheck_text_values (unittest.TestCase):
 	'''testing itemcheck function'''
+
 	def test_emptystring (self):
 		''' an empty string returns another empty string'''
-		self.assertEqual (TM.itemcheck(""),"")
+		self.assertEqual (TM.__itemcheck__(self, ""),"")
 
 	def test_itemcheck (self):
 		''' only text are addmitted as input '''
 		sample_bad_values = (True, False, None, 33, 3.5)
 		for values in sample_bad_values:
-			self.assertRaises (TM.NotStringError, TM.itemcheck, values)
+			self.assertRaises (TM.NotStringError, TM.__itemcheck__, self, values)
 
 	def test_malformed_paths (self):
 		''' malformed path as inputs are ommited and raises an error '''
 		malformed_values = ("///","/home//")
 		for inputstring in malformed_values:
-			self.assertRaises (TM.MalformedPathError, TM.itemcheck, inputstring)
+			self.assertRaises (TM.MalformedPathError, TM.__itemcheck__, self,inputstring)
 
 class ShotwellSearch_test (unittest.TestCase):
 	DBpath = "TESTS/photo.db"
 	DBpath = "/home/pablo/.local/share/shotwell/data/photo.db"
-	classitem = TM.ShotwellSearch (DBpath)
+	classitem = ShotwellSearch (DBpath)
 	classitem.whereList = []  # Needed to initialize some search for this test
 
 	def test___addtextfilter__ (self):

@@ -1,48 +1,7 @@
 #!/usr/bin/python3
-
+# Dependencies
 import sqlite3, os, shutil  #, sys, , logging, re
-import unicodedata  # To eliminate áéíóú öü ñÑ
-
-
-# ------- Set Variables ---------
-
-DBpath = os.path.join(os.getenv('HOME'),".local/share/shotwell/data/photo.db")
-
-
-
-# Error Handling
-class OutOfRangeError(ValueError):
-	pass
-class NotIntegerError(ValueError):
-	pass
-class NotStringError(ValueError):
-	pass
-class MalformedPathError(ValueError):
-	pass
-class EmptyStringError(ValueError):
-	pass
-
-
-
-# ------ utils --------
-def itemcheck(pointer):
-	''' returns what kind of a pointer is '''
-	if type(pointer) is not str:
-		raise NotStringError ('Bad input, it must be a string')
-	if pointer.find("//") != -1 :
-		raise MalformedPathError ('Malformed Path, it has double slashes')
-	
-	if os.path.isfile(pointer):
-		return 'file'
-	if os.path.isdir(pointer):
-		return 'folder'
-	if os.path.islink(pointer):
-		return 'link'
-	return ""
-
-def elimina_tildes(s):
-   return ''.join((c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn'))
-
+import unicodedata  # To substitute áéíóú öü ñÑ
 
 class ShotwellSearch:
 	""" Handles a Shotwell Database in order to access to its Saved Searches.
@@ -50,7 +9,45 @@ class ShotwellSearch:
 		It makes an auxiliar table to perform Shotwell Saved Searches queries.
 		It returns the Saved Searches Query as an iterator.
 		It returns the file entries of a Saved Search as an iterator.
+
+		Use the iterable method "Searchtable()" to retrieve the Shotwell saved searches.
+		Use "Search(id)" to manage this Search id across this class.
+		Use the "searchid" property to see the id of the selected search.
+		Use the "searchname" property to see the search name.
+		Use the "query" property to see the SQL statement on the sqlite3 temp database.
+		Use the "Resultentries" method as iterable to iterate across de searched results.
 		"""
+
+	# Error Handling
+	class NotStringError(ValueError):
+		pass
+	class MalformedPathError(ValueError):
+		pass
+	class OutOfRangeError(ValueError):
+		pass
+
+	# ------ utils --------
+	def __itemcheck__ (self, pointer):
+		''' returns what kind of a pointer is '''
+
+		if type(pointer) is not str:
+			raise ShotwellSearch.NotStringError ('Bad input, it must be a string')
+		if pointer.find("//") != -1 :
+			raise ShotwellSearch.MalformedPathError ('Malformed Path, it has double slashes')
+		
+		if os.path.isfile(pointer):
+			return 'file'
+		if os.path.isdir(pointer):
+			return 'folder'
+		if os.path.islink(pointer):
+			return 'link'
+		return ""
+
+	def __elimina_tildes__ (self, s):
+	   return ''.join((c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn'))
+
+
+
 	# Main Search operators
 	ops = {
 		'ANY'	:'OR',
@@ -69,9 +66,6 @@ class ShotwellSearch:
 		'DATE': 		'exposure_time',
 		'RATING':		'rating',
 		'FLAG_STATE':	'flags',
-
-		'MEDIA TYPE':	'',
-		'PHOTO STATE':	'photostate',
 		}
 
 	# text operators SQL conversion string
@@ -111,22 +105,29 @@ class ShotwellSearch:
 
 
 	searchid = None
+	searchname = None
 	Moperator = None
-	Searchname = None
 	query = None
 
 
-	def __init__(self, DBpath):
-		""" Makes its own tmp DB """
+	def __init__(self, DBpath = os.path.join(os.getenv('HOME'),".local/share/shotwell/data/photo.db")):
+		""" makes its own tmp DB an works on it """
 		# Copying DBfile
-		if itemcheck (DBpath) != 'file':
+		if self.__itemcheck__ (DBpath) != 'file':
 			print ('Can\'t locate Shotwell Database.', DBpath)
 			exit()
 		tmpDB = 'TempDB.sqlite3'
-		if itemcheck (tmpDB) == 'file':
+		if self.__itemcheck__ (tmpDB) == 'file':
 			os.remove(tmpDB)
 		shutil.copy (DBpath, tmpDB)
 		self.con = sqlite3.connect (tmpDB)
+
+		__Schema__, __appversion__ = self.con.execute ("SELECT schema_version, app_version FROM versiontable").fetchone()
+		if __Schema__ < 20 :
+			print ("This utility may not work properly with an Shotwell DataBase Schema minor than 20")
+			print ("It is recomended use Shtwell 0.22.0 or later")
+			print ("Actual DB Schema is %s"%__Schema__)
+			print ("Actual Shotwell Version %s"%__appversion__)
 
 		self.con.execute ("CREATE TABLE results (\
 				id INTEGER PRIMARY KEY, \
@@ -141,7 +142,9 @@ class ShotwellSearch:
 				filename TEXT, \
 				event_name TEXT, \
 				event_comment TEXT, \
-				tags TEXT \
+				tags TEXT, \
+				editable_id INTEGER, \
+				transformations TEXT \
 				)")
 			
 		# Insert photo and event data into results table.
@@ -159,7 +162,9 @@ class ShotwellSearch:
 					null as filename,\
 					eventtable.name as event_name,\
 					eventtable.comment as event_comment,\
-					null as tags\
+					null as tags,\
+					editable_id,\
+					transformations\
 				FROM phototable JOIN eventtable \
 				ON phototable.event_id = eventtable.id")
 
@@ -178,7 +183,9 @@ class ShotwellSearch:
 					null as filename,\
 					null as event_name,\
 					null as event_comment,\
-					null as tags\
+					null as tags,\
+					editable_id,\
+					transformations\
 				FROM phototable\
 				WHERE event_id = -1 and exposure_time = 0")
 		self.con.commit ()
@@ -188,7 +195,6 @@ class ShotwellSearch:
 		cursor.execute ("SELECT id, fullfilepath FROM results ORDER BY id")
 
 		for ID, Fullfilepath in cursor:
-			print (ID, Fullfilepath)
 			Filename = os.path.splitext(os.path.basename(Fullfilepath))[0]
 			# Finding tags  (thumb000000000000000f,)
 			thumb = u"'%"+"thumb%016x,"%ID+u"%'"
@@ -200,12 +206,11 @@ class ShotwellSearch:
 			else:
 				# aplying transformations >> lower and without tildes ..... Well, Shotwell modifies this searches on tags, so lets do it.
 				tagstring = tagstring.lower()
-				tagstring = elimina_tildes(tagstring)
-			print (tagstring)
+				tagstring = self.__elimina_tildes__ (tagstring)
 			self.con.execute("UPDATE results SET filename = ?, tags = ? WHERE id = ?", (Filename,tagstring,ID))
 
 		self.con.commit()
-		print ("Class ShotwellSearch initialized, we are working on a temporal copy of the Shotwell Database.")
+		print ("Class ShotwellSearch initialized.","Don't worry, we are working on a temporal copy of the Shotwell Database.", sep = '\n')
 
 	def Searchtable (self):
 		tablelist = self.con.execute ("SELECT id, name, operator FROM SavedSearchDBTable ORDER BY id")
@@ -220,10 +225,10 @@ class ShotwellSearch:
 		if entry == None:
 			print ("Search id out of Searchtable.")
 			return 
-		self.Searchname, moperator = entry
+		self.searchname, moperator = entry
 		moperator = moperator.upper()
 		if moperator not in self.ops:
-			raise OutOfRangeError ('This main operator is not allowed (%s)'%moperator)
+			raise ShotwellSearch.OutOfRangeError ('This main operator is not allowed (%s)'%moperator)
 			return
 		self.Moperator = self.ops[moperator]
 		self.whereList = list()
@@ -242,9 +247,9 @@ class ShotwellSearch:
 
 	def __addtextfilter__ (self, field, operator, value):
 		if field not in self.fields:
-			raise OutOfRangeError ('Not a valid field %s not in %s'%(field, self.fields))
+			raise ShotwellSearch.OutOfRangeError ('Not a valid field %s not in %s'%(field, self.fields))
 		if operator not in self.textoperators:
-			raise OutOfRangeError ('Not a valid operator %s not in %s'%(operator, self.textoperators))
+			raise ShotwellSearch.OutOfRangeError ('Not a valid operator %s not in %s'%(operator, self.textoperators))
 		subwhereList = []
 		for wherefield in self.fields[field]:
 			if wherefield == 'tags' and operator == 'IS_EXACTLY':
@@ -259,9 +264,9 @@ class ShotwellSearch:
 
 	def __adddatefilter__ (self, field, context, dateone, datetwo):
 		if field != 'DATE':
-			raise OutOfRangeError ('Not a valid field %s not in %s'%(field, self.fields))
+			raise ShotwellSearch.OutOfRangeError ('Not a valid field %s not in %s'%(field, self.fields))
 		if context not in self.dateoperators:
-			raise OutOfRangeError ('Not a valid operator %s not in %s'%(context, self.dateoperators))
+			raise ShotwellSearch.OutOfRangeError ('Not a valid operator %s not in %s'%(context, self.dateoperators))
 		string = self.dateoperators[context].replace('datefield',self.fields [field])
 		string = string.replace('d_one', str(dateone))
 		string = string.replace('d_two', str(datetwo))
@@ -269,17 +274,17 @@ class ShotwellSearch:
 
 	def __addratingfilter__ (self, field, rating, context ):
 		if field != 'RATING':
-			raise OutOfRangeError ('Not a valid field %s not in %s'%(field, self.fields))
+			raise ShotwellSearch.OutOfRangeError ('Not a valid field %s not in %s'%(field, self.fields))
 		if context not in self.ratingoperators:
-			raise OutOfRangeError ('Not a valid operator %s not in %s'%(context, self.ratingoperators))
+			raise ShotwellSearch.OutOfRangeError ('Not a valid operator %s not in %s'%(context, self.ratingoperators))
 		string = self.fields [field] + " " + self.ratingoperators[context] + " " + str(rating)
 		self.whereList.append (string)
 
 	def __addflagfilter__ (self, field, context):
 		if field != 'FLAG_STATE':
-			raise OutOfRangeError ('Not a valid field %s not in %s'%(field, self.fields))
+			raise ShotwellSearch.OutOfRangeError ('Not a valid field %s not in %s'%(field, self.fields))
 		if context not in self.flagoperators:
-			raise OutOfRangeError ('Not a valid operator %s not in %s'%(context, self.flagoperators))
+			raise ShotwellSearch.OutOfRangeError ('Not a valid operator %s not in %s'%(context, self.flagoperators))
 		string = self.fields [field] + " " + self.flagoperators[context]
 		self.whereList.append (string)
 
@@ -299,8 +304,3 @@ class ShotwellSearch:
 				print ("\t",entry)
 			return
 		return self.con.execute (self.query)
-	
-
-
-if __name__ == '__main__':
-	search = ShotwellSearch(DBpath)
