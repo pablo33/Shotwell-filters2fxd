@@ -1,13 +1,15 @@
 #!/usr/bin/python3
 # Test Configuration
-import unittest
-from ShotwellFilters2fxd import ShotwellSearch
+import unittest, shutil, os
+from ShotwellSearchAPI import ShotwellSearch
+import ShotwellSearch2fxd
 
 
 
 #####TESTS########
 
 TM = ShotwellSearch
+TM2= ShotwellSearch2fxd
 
 class itemcheck_text_values (unittest.TestCase):
 	'''testing itemcheck function'''
@@ -94,6 +96,22 @@ class ShotwellSearch_test (unittest.TestCase):
 			self.classitem.__addflagfilter__ (key[0],key[1])
 			self.assertIn (match, self.classitem.whereList)
 			self.classitem.whereList = []
+
+class ShotwellSearch2fxd_test (unittest.TestCase):
+	DBpath = "/home/pablo/.local/share/shotwell/data/photo.db"
+	testuserpath = "TESTS/fxd/"
+	SR = ShotwellSearch (DBpath)
+	if os.path.isdir(testuserpath):
+		shutil.rmtree(testuserpath)
+	os.makedirs (testuserpath)
+
+
+	def test_Writefxd (self):
+		""" Write one fxd file for selected search """
+		for entry in self.SR.Searchtable ():
+			self.SR.Search (entry[0])  # Selecting the first search, for example.
+			TM2.Writefxd (self.SR, self.testuserpath)
+
 
 
 
