@@ -116,10 +116,11 @@ class ShotwellSearch:
 		if self.__itemcheck__ (DBpath) != 'file':
 			print ('Can\'t locate Shotwell Database.', DBpath)
 			exit()
-		tmpDB = 'TempDB.sqlite3'
+		tmpDB = 'ShotwellCopyTempDB.sqlite3'
 		if self.__itemcheck__ (tmpDB) == 'file':
 			os.remove(tmpDB)
 		shutil.copy (DBpath, tmpDB)
+		print ("Don't worry, we are working on a temporal copy of the Shotwell Database.")
 		self.con = sqlite3.connect (tmpDB)
 
 		__Schema__, __appversion__ = self.con.execute ("SELECT schema_version, app_version FROM versiontable").fetchone()
@@ -191,6 +192,7 @@ class ShotwellSearch:
 		self.con.commit ()
 			
 		# Extracting and setting tags and filenames
+		print ("Creating the Tag table...", end='')
 		cursor = self.con.cursor()
 		cursor.execute ("SELECT id, fullfilepath FROM results ORDER BY id")
 
@@ -208,9 +210,10 @@ class ShotwellSearch:
 				tagstring = tagstring.lower()
 				tagstring = self.__elimina_tildes__ (tagstring)
 			self.con.execute("UPDATE results SET filename = ?, tags = ? WHERE id = ?", (Filename,tagstring,ID))
+		print ("Done!.")
 
 		self.con.commit()
-		print ("Class ShotwellSearch initialized.","Don't worry, we are working on a temporal copy of the Shotwell Database.", sep = '\n')
+		print ("Class ShotwellSearch initialized.")
 
 	def Searchtable (self):
 		tablelist = self.con.execute ("SELECT id, name, operator FROM SavedSearchDBTable ORDER BY id")
