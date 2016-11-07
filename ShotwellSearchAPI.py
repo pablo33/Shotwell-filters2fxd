@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # Dependencies
-import sqlite3, os, shutil  #, sys, , logging, re
+import sqlite3, os, shutil, sys #logging, re
 import unicodedata  # To substitute áéíóú öü ñÑ
 
 class ShotwellSearch:
@@ -26,7 +26,36 @@ class ShotwellSearch:
 	class OutOfRangeError(ValueError):
 		pass
 
+
 	# ------ utils --------
+	class Progresspercent:
+		''' Show the progression of an activity in percentage
+		it is swhon on the same line'''
+		def __init__ (self, maxValue, title = '', showpartial=True):
+			if title != '':
+			    self.title = " " + title + ":"  # Name of the 
+			else:
+			    self.title = " "
+			self.maxValue = maxValue
+			self.partial = showpartial
+
+		def showprogress (self, p):
+			'''
+			Shows the progress in percentage vía stdout, and returns its value again.
+			'''
+			progressvalue = (p / self.maxValue * 100)
+			progresspercent = "%.1f"%progressvalue + "%"
+			if self.partial == True:
+			        progresspartial = "(" + str(p) + "/" + str (self.maxValue) + ")"
+			else:
+			        progresspartial = ''
+			progresstext = self.title + progresspartial + " " + progresspercent
+			sys.stdout.write (progresstext + chr(8)*len(progresstext))
+			if p == self.maxValue:
+			        sys.stdout.write('\n')
+			sys.stdout.flush()
+			return progresspercent
+
 	def __itemcheck__ (self, pointer):
 		''' returns what kind of a pointer is '''
 
@@ -192,11 +221,16 @@ class ShotwellSearch:
 		self.con.commit ()
 			
 		# Extracting and setting tags and filenames
-		print ("Creating the Tag table...", end='')
+		Taskname = "Creating the Tag table... this may take a little time..."
+		Totalentries = self.con.execute ("SELECT COUNT (id) FROM results").fetchone()[0]
+		progressindicator = self.Progresspercent ( Totalentries, title= Taskname, showpartial=True  )
+		
 		cursor = self.con.cursor()
 		cursor.execute ("SELECT id, fullfilepath FROM results ORDER BY id")
-
+		i = 0
 		for ID, Fullfilepath in cursor:
+			i += 1
+			progressindicator.showprogress (i)
 			Filename = os.path.splitext(os.path.basename(Fullfilepath))[0]
 			# Finding tags  (thumb000000000000000f,)
 			thumb = u"'%"+"thumb%016x,"%ID+u"%'"
