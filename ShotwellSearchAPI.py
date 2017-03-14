@@ -73,8 +73,8 @@ class ShotwellSearch:
 		return ""
 
 	def __elimina_tildes__ (self, s):
-	   return ''.join((c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn'))
-
+	   string = ''.join((c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn'))
+	   return string.lower ()
 
 
 	# Main Search operators
@@ -242,23 +242,18 @@ class ShotwellSearch:
 			else:
 				# aplying transformations >> lower and without tildes ..... Well, Shotwell modifies this searches on tags, so lets do it.
 				# Tags
-				tagstring = tagstring.lower()
 				tagstring = self.__elimina_tildes__ (tagstring)
-				# Title
-				if Title is not None:
-					Title = Title.lower()
-					Title = self.__elimina_tildes__ (Title)
-				# Event names
-				if Event_name is not None: 
-					Event_name = Event_name.lower()
-					Event_name = self.__elimina_tildes__ (Event_name)
-				# Event comments
-				if Event_comment is not None:
-					Event_comment = Event_comment.lower()
-					Event_comment = self.__elimina_tildes__ (Event_comment)
-				# Filename
-				Filename = Filename.lower()
-				Filename = self.__elimina_tildes__(Filename)
+			# Title
+			if Title is not None:
+				Title = self.__elimina_tildes__ (Title)
+			# Event names
+			if Event_name is not None: 
+				Event_name = self.__elimina_tildes__ (Event_name)
+			# Event comments
+			if Event_comment is not None:
+				Event_comment = self.__elimina_tildes__ (Event_comment)
+			# Filename
+			Filename = self.__elimina_tildes__(Filename)
 
 			self.con.execute("UPDATE results SET filename = ?, tags = ?, title = ?, event_name = ?, event_comment = ?  WHERE id = ?", (Filename,tagstring,Title,Event_name,Event_comment,ID))
 		print ("Done!.")
