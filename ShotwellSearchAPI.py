@@ -220,15 +220,15 @@ class ShotwellSearch:
 				WHERE event_id = -1 and exposure_time = 0")
 		self.con.commit ()
 			
-		# Extracting and setting tags and filenames
+		# Extracting and setting tags and filenames // converting to lower, removing tildes, and Rare characters. (ñ >> n)
 		Taskname = "Creating the Tag table... this may take a little time..."
 		Totalentries = self.con.execute ("SELECT COUNT (id) FROM results").fetchone()[0]
 		progressindicator = self.Progresspercent ( Totalentries, title= Taskname, showpartial=True  )
 		
 		cursor = self.con.cursor()
-		cursor.execute ("SELECT id, fullfilepath FROM results ORDER BY id")
+		cursor.execute ("SELECT id, fullfilepath, title, event_name, event_comment FROM results ORDER BY id")
 		i = 0
-		for ID, Fullfilepath in cursor:
+		for ID, Fullfilepath, Title, Event_name, Event_comment in cursor:
 			i += 1
 			progressindicator.showprogress (i)
 			Filename = os.path.splitext(os.path.basename(Fullfilepath))[0]
@@ -241,9 +241,26 @@ class ShotwellSearch:
 				tagstring = None
 			else:
 				# aplying transformations >> lower and without tildes ..... Well, Shotwell modifies this searches on tags, so lets do it.
+				# Tags
 				tagstring = tagstring.lower()
 				tagstring = self.__elimina_tildes__ (tagstring)
-			self.con.execute("UPDATE results SET filename = ?, tags = ? WHERE id = ?", (Filename,tagstring,ID))
+				# Title
+				if Title is not None:
+					Title = Title.lower()
+					Title = self.__elimina_tildes__ (Title)
+				# Event names
+				if Event_name is not None: 
+					Event_name = Event_name.lower()
+					Event_name = self.__elimina_tildes__ (Event_name)
+				# Event comments
+				if Event_comment is not None:
+					Event_comment = Event_comment.lower()
+					Event_comment = self.__elimina_tildes__ (Event_comment)
+				# Filename
+				Filename = Filename.lower()
+				Filename = self.__elimina_tildes__(Filename)
+
+			self.con.execute("UPDATE results SET filename = ?, tags = ?, title = ?, event_name = ?, event_comment = ?  WHERE id = ?", (Filename,tagstring,Title,Event_name,Event_comment,ID))
 		print ("Done!.")
 
 		self.con.commit()
